@@ -11,6 +11,7 @@ all: compile_and_sim
 
 # Compile and immediately run simulation
 compile_and_sim:
+	cp ../pipeline/memfile.dat .
 	$(VCS) -R -full64 -sverilog $(SV_SRCS) \
 	-kdb -lca -debug_access+all |& tee compile_and_sim.log
 
@@ -26,6 +27,7 @@ compile_verdi:
 
 # Run already-compiled simulation
 sim:
+	cp ../pipeline/memfile.dat .
 	./simv
 
 # Launch Verdi
