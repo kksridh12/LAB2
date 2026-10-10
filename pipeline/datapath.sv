@@ -86,11 +86,11 @@ module datapath (
             validD   <= 1'b0;
             instrD   <= 32'b0;
             pcplus4D <= 32'b0;
-        end else if (redirectE) begin
+        end else if (redirectE) begin // If branch/jump, flush the instruction in Decode stage
             validD   <= 1'b0;
             instrD   <= 32'b0;
             pcplus4D <= 32'b0;
-        end else if (!stallD) begin
+        end else if (!stallD) begin // Register next instruction and PC+4 if there is no stall
             validD   <= 1'b1;
             instrD   <= instr;
             pcplus4D <= pcplus4F;
@@ -100,15 +100,15 @@ module datapath (
     // ============================================================
     // 3. Decode / register-file logic
     // ============================================================
-    assign rsD = instrD[25:21];
-    assign rtD = instrD[20:16];
-    assign rdD = instrD[15:11];
+    assign rsD = instrD[25:21]; // operand A register number
+    assign rtD = instrD[20:16]; // operand B register number
+    assign rdD = instrD[15:11]; // destination register number
 
     assign destD = regdstD ? rdD : rtD;
     assign signimmD = {{16{instrD[15]}}, instrD[15:0]};
 
-    assign isAddD = (instrD[31:26] == 6'b000000) &&
-                    (instrD[5:0]   == 6'b100000);
+    assign isAddD = (opcode_t'(instrD[31:26]) == OP_RTYPE) &&
+                    (funct_t'(instrD[5:0]) == FUNCT_ADD);
 
     regfile rf (
         .clk(clk),
@@ -128,16 +128,16 @@ module datapath (
         usesRtD = 1'b0;
 
         if (validD && instrD != 32'b0) begin
-            case (instrD[31:26])
-                6'b000000,
-                6'b101011,
-                6'b000100: begin
+            case (opcode_t'(instrD[31:26]))
+                OP_RTYPE,
+                OP_SW,
+                OP_BEQ: begin
                     usesRsD = 1'b1;
                     usesRtD = 1'b1;
                 end
 
-                6'b100011,
-                6'b001000: usesRsD = 1'b1;
+                OP_LW,
+                OP_ADDI: usesRsD = 1'b1;
 
                 default: begin
                     usesRsD = 1'b0;
@@ -275,6 +275,7 @@ module datapath (
     assign branchTargetE = pcplus4E + (signimmE << 2);
     assign jumpTargetE = {pcplus4E[31:28], jumpIndexE, 2'b00};
 
+    // Branch or jump? If so, flush the instruction in Decode stage.
     assign redirectE = validE &&
                        (jumpE || (branchE && zeroE));
 

@@ -22,16 +22,7 @@ module top (
 
     logic [31:0] pc, instr, readdata;
 
-    mips mips (
-        .clk(clk),
-        .reset(reset),
-        .pc(pc),
-        .instr(instr),
-        .memwrite(memwrite),
-        .aluout(dataadr),
-        .writedata(writedata),
-        .readdata(readdata)
-    );
+    mips mips ( .aluout(dataadr), .*);
 
     imem imem (
         .a(pc[7:2]),
@@ -71,35 +62,10 @@ module mips (
     controller c (
         .op(instrD[31:26]),
         .funct(instrD[5:0]),
-        .memtoregD(memtoregD),
-        .memwriteD(memwriteD),
-        .branchD(branchD),
-        .alusrcD(alusrcD),
-        .regdstD(regdstD),
-        .regwriteD(regwriteD),
-        .jumpD(jumpD),
-        .alucontrolD(alucontrolD)
+        .*
     );
 
-    datapath dp (
-        .clk(clk),
-        .reset(reset),
-        .memtoregD(memtoregD),
-        .memwriteD(memwriteD),
-        .branchD(branchD),
-        .alusrcD(alusrcD),
-        .regdstD(regdstD),
-        .regwriteD(regwriteD),
-        .jumpD(jumpD),
-        .alucontrolD(alucontrolD),
-        .pc(pc),
-        .instr(instr),
-        .instrD(instrD),
-        .memwrite(memwrite),
-        .aluout(aluout),
-        .writedata(writedata),
-        .readdata(readdata)
-    );
+    datapath dp ( .* );
 
 endmodule
 

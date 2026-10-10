@@ -6,7 +6,8 @@
 // - You need to modify these arrays to match the instructions in memfile.dat file used to initialize imem
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-`timescale 1ns/1ps
+timeunit 1ns;
+timeprecision 1ps;
 
 module MIPS_Testbench;
 
@@ -124,6 +125,11 @@ module MIPS_Testbench;
                     write_count, N
                 );
         end
+    end
+
+    initial begin
+				$fsdbDumpfile("novas.fsdb");
+				$fsdbDumpvars(0, "+mda");
     end
 
 endmodule
