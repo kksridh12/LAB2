@@ -41,22 +41,25 @@ module datapath (
 
     logic [4:0] rsD, rtD, rdD, destD;
     logic [31:0] rd1D, rd2D, signimmD;
-    logic usesRsD, usesRtD, isAddD;
-    logic depE, depM, depW;
+    logic usesRsD, usesRtD, usesRdD, isAddD, isMulD;
+    logic depE, depM, depW, hazardD, mulStartD, mulInFlight;
 
-    logic [31:0] operandAE, operandBE, signimmE;
+    logic [31:0] operandAE, operandBE, signimmE, mulProductE;
     logic [25:0] jumpIndexE;
     logic [4:0] rsE, rtE, destE;
     logic memtoregE, memwriteE, branchE;
-    logic alusrcE, regwriteE, jumpE, isAddE;
+    logic alusrcE, regwriteE, jumpE, isAddE, isMulE;
+    logic mulSecondCycleE;
     logic [2:0] alucontrolE;
 
     logic [31:0] forwardedAE, forwardedBE, srcBE;
+    logic [31:0] aluInputAE, aluInputBE;
+    logic [2:0] aluInputControlE;
     logic [31:0] aluResultE, branchTargetE, jumpTargetE;
     logic zeroE;
     logic [1:0] forwardAE, forwardBE;
 
-    logic [31:0] aluResultM, storeDataM;
+    logic [31:0] aluResultM, storeDataM, multResultM;
     logic [4:0] destM;
     logic memtoregM, memwriteM, regwriteM;
 
@@ -64,6 +67,10 @@ module datapath (
     logic [4:0] destW;
     logic memtoregW, regwriteW, writeEnableW;
 
+    logic [31:0] cycle_count;
+    logic        incr_instr_cnt;
+    logic [31:0] instr_count;
+    logic        isPerfCycD, isPerfInstD;
     // ============================================================
     // 1. Fetch logic
     // ============================================================
@@ -77,7 +84,7 @@ module datapath (
         else if (!stallD)
             pc <= pcplus4F;
     end
-
+    
     // ============================================================
     // 2. Fetch-to-decode pipeline registers
     // ============================================================
@@ -105,27 +112,40 @@ module datapath (
     assign rdD = instrD[15:11]; // destination register number
 
     assign destD = regdstD ? rdD : rtD;
-    assign signimmD = {{16{instrD[15]}}, instrD[15:0]};
+    assign signimmD = isPerfCycD | isPerfInstD ? 32'b0 : {{16{instrD[15]}}, instrD[15:0]};
 
     assign isAddD = (opcode_t'(instrD[31:26]) == OP_RTYPE) &&
                     (funct_t'(instrD[5:0]) == FUNCT_ADD);
+    assign isMulD = (opcode_t'(instrD[31:26]) == OP_RTYPE) &&
+                    (funct_t'(instrD[5:0]) == FUNCT_MAC);
+    assign isPerfCycD = (opcode_t'(instrD[31:26]) == OP_PERF) && 
+                        (funct_t'(instrD[5:0]) == FUNCT_PERF_CYC);
+    assign isPerfInstD = (opcode_t'(instrD[31:26]) == OP_PERF) && 
+                         (funct_t'(instrD[5:0]) == FUNCT_PERF_INST);
 
     regfile rf (
         .clk(clk),
         .we3(writeEnableW),
         .ra1(rsD),
-        .ra2(rtD),
+        // Reuse the second read port for rd during MULADD's add cycle.
+        .ra2(isMulE ? rdD : rtD),
         .wa3(destW),
         .wd3(resultW),
         .rd1(rd1D),
         .rd2(rd2D)
     );
 
+    perfmon perfmon ( .clk(clk), .reset(reset), 
+                      .cycle_cnt(cycle_count), 
+                      .incr_instr_cnt(incr_instr_cnt), 
+                      .instr_cnt(instr_count) );
+
     // Identify actual source registers.
     // J has no register operands; LW/ADDI use only rs.
     always_comb begin
         usesRsD = 1'b0;
         usesRtD = 1'b0;
+        usesRdD = 1'b0;
 
         if (validD && instrD != 32'b0) begin
             case (opcode_t'(instrD[31:26]))
@@ -144,29 +164,44 @@ module datapath (
                     usesRtD = 1'b0;
                 end
             endcase
+
+            usesRdD = isMulD;
         end
     end
 
     // Does Decode need a register an older instruction will write?
     assign depE = validE && regwriteE && (destE != 5'd0) &&
                   ((usesRsD && rsD == destE) ||
-                   (usesRtD && rtD == destE));
+                   (usesRtD && rtD == destE) ||
+                   (usesRdD && rdD == destE));
 
     assign depM = validM && regwriteM && (destM != 5'd0) &&
                   ((usesRsD && rsD == destM) ||
-                   (usesRtD && rtD == destM));
+                   (usesRtD && rtD == destM) ||
+                   (usesRdD && rdD == destM));
 
     assign depW = validW && regwriteW && (destW != 5'd0) &&
                   ((usesRsD && rsD == destW) ||
-                   (usesRtD && rtD == destW));
+                   (usesRtD && rtD == destW) ||
+                   (usesRdD && rdD == destW));
 
     // ADD can use forwarding except immediately after a load.
     // A W-stage dependency also stalls because RF writes occur
     // at the same rising edge as Decode operand capture.
-    assign stallD = validD &&
-                    (isAddD
-                        ? ((depE && memtoregE) || depW)
-                        : (depE || depM || depW));
+    // The Decode copy of MULADD stays in place for both Execute cycles.
+    // Ignore its own destination dependency while that copy is in Execute.
+    assign mulInFlight = validD && validE && isMulD && isMulE;
+    assign hazardD = validD && !mulInFlight &&
+                     (isMulD
+                        ? (depE || depM || depW)
+                        : (isAddD
+                            ? ((depE && memtoregE) || depW)
+                            : (depE || depM || depW)));
+    assign mulStartD = validD && isMulD && !mulInFlight && !hazardD;
+    // Hold Fetch/Decode during MULADD's multiply cycle. The stall releases
+    // for its add cycle so the next instruction and PC advance on retirement.
+    assign stallD = hazardD || mulStartD ||
+                    (validE && isMulE && !mulSecondCycleE);
 
     // ============================================================
     // 4. Decode-to-execute pipeline registers
@@ -189,8 +224,25 @@ module datapath (
             regwriteE  <= 1'b0;
             jumpE      <= 1'b0;
             isAddE     <= 1'b0;
+            isMulE     <= 1'b0;
+            mulSecondCycleE <= 1'b0;
+            mulProductE <= 32'b0;
             alucontrolE <= 3'b010;
-        end else if (redirectE || stallD) begin
+        end else if (validE && isMulE && !mulSecondCycleE) begin
+            // Cycle 1: latch rs * rt; keep the instruction and Decode copy.
+            mulProductE <= aluResultE;
+            mulSecondCycleE <= 1'b1;
+        end else if (validE && isMulE && mulSecondCycleE) begin
+            // Cycle 2 has completed; retire MULADD and let Decode advance.
+            validE    <= 1'b0;
+            regwriteE <= 1'b0;
+            memwriteE <= 1'b0;
+            branchE   <= 1'b0;
+            jumpE     <= 1'b0;
+            isAddE    <= 1'b0;
+            isMulE    <= 1'b0;
+            mulSecondCycleE <= 1'b0;
+        end else if (redirectE || (stallD && !mulStartD)) begin
             // Bubble: no architectural side effects.
             validE    <= 1'b0;
             regwriteE <= 1'b0;
@@ -198,10 +250,12 @@ module datapath (
             branchE   <= 1'b0;
             jumpE     <= 1'b0;
             isAddE    <= 1'b0;
+            isMulE    <= 1'b0;
+            mulSecondCycleE <= 1'b0;
         end else begin
             // Treat an all-zero instruction as a NOP.
             validE     <= validD && (instrD != 32'b0);
-            operandAE  <= rd1D;
+            operandAE  <= isPerfCycD ? cycle_count : (isPerfInstD ? instr_count : rd1D);
             operandBE  <= rd2D;
             signimmE   <= signimmD;
             pcplus4E   <= pcplus4D;
@@ -216,6 +270,8 @@ module datapath (
             regwriteE  <= regwriteD;
             jumpE      <= jumpD;
             isAddE     <= isAddD;
+            isMulE     <= isMulD;
+            mulSecondCycleE <= 1'b0;
             alucontrolE <= alucontrolD;
         end
     end
@@ -264,10 +320,17 @@ module datapath (
 
     assign srcBE = alusrcE ? signimmE : forwardedBE;
 
+    assign aluInputAE = (isMulE && mulSecondCycleE)
+                      ? mulProductE : forwardedAE;
+    assign aluInputBE = (isMulE && mulSecondCycleE)
+                      ? rd2D : srcBE;
+    assign aluInputControlE = (isMulE && mulSecondCycleE)
+                            ? 3'b010 : alucontrolE;
+
     alu alu (
-        .a(forwardedAE),
-        .b(srcBE),
-        .control(alucontrolE),
+        .a(aluInputAE),
+        .b(aluInputBE),
+        .control(aluInputControlE),
         .result(aluResultE),
         .zero(zeroE)
     );
@@ -294,22 +357,23 @@ module datapath (
             memwriteM  <= 1'b0;
             regwriteM  <= 1'b0;
         end else begin
-            validM     <= validE;
+            // A MULADD only advances after its add cycle, never after multiply.
+            validM     <= validE && (!isMulE || mulSecondCycleE);
             aluResultM <= aluResultE;
             storeDataM <= forwardedBE;
             destM      <= destE;
-            memtoregM  <= memtoregE;
-            memwriteM  <= memwriteE;
-            regwriteM  <= regwriteE;
+            memtoregM  <= validE && (!isMulE || mulSecondCycleE) && memtoregE;
+            memwriteM  <= validE && (!isMulE || mulSecondCycleE) && memwriteE;
+            regwriteM  <= validE && (!isMulE || mulSecondCycleE) && regwriteE;
         end
     end
-
+    assign incr_instr_cnt = validM || (instrD == 32'b0);
     // ============================================================
     // 7. Memory logic
     // ============================================================
     assign aluout   = aluResultM;
     assign writedata = storeDataM;
-    assign memwrite = validM && memwriteM && !reset;
+    assign memwrite = validM && memwriteM;
 
     // ============================================================
     // 8. Memory-to-writeback pipeline registers
@@ -336,7 +400,7 @@ module datapath (
     // 9. Writeback logic
     // ============================================================
     assign resultW = memtoregW ? readDataW : aluResultW;
-    assign writeEnableW = validW && regwriteW && !reset;
+    assign writeEnableW = validW && regwriteW;
 
 endmodule
 
@@ -373,6 +437,7 @@ module alu (
             3'b000: result = a & b;
             3'b001: result = a | b;
             3'b010: result = a + b;
+            3'b101: result = a * b;
             3'b110: result = a - b;
             3'b111: result = {31'b0, ($signed(a) < $signed(b))};
             default: result = 32'b0;
@@ -381,4 +446,26 @@ module alu (
 
     assign zero = (result == 32'b0);
 
+endmodule
+
+
+// ============================================================
+// Performance monitor: counts cycles and reports on exit
+// ============================================================
+module perfmon (
+    input  logic clk, reset,
+    input  logic incr_instr_cnt,
+    output logic [31:0] instr_cnt,
+    output logic [31:0] cycle_cnt
+);
+
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) cycle_cnt <= 32'b0;
+        else       cycle_cnt <= cycle_cnt + 1;
+    end
+
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset)               instr_cnt <= 32'b0;
+        else if (incr_instr_cnt) instr_cnt <= instr_cnt + 1;
+    end
 endmodule

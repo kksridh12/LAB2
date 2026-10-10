@@ -1,20 +1,3 @@
-typedef enum logic [5:0] {
-    OP_RTYPE = 6'b000000,
-    OP_LW    = 6'b100011,
-    OP_SW    = 6'b101011,
-    OP_BEQ   = 6'b000100,
-    OP_ADDI  = 6'b001000,
-    OP_J     = 6'b000010
-} opcode_t;
-
-typedef enum logic [5:0] {
-    FUNCT_ADD  = 6'b100000,
-    FUNCT_SUB  = 6'b100010,
-    FUNCT_AND  = 6'b100100,
-    FUNCT_OR   = 6'b100101,
-    FUNCT_SLT  = 6'b101010
-} funct_t;
-
 module controller (
     input  opcode_t op,
     input  funct_t  funct,
@@ -78,6 +61,7 @@ module maindec (
             OP_BEQ:   controls = 9'b000100001; // BEQ
             OP_ADDI:  controls = 9'b101000000; // ADDI
             OP_J:     controls = 9'b000000100; // J
+            OP_PERF:  controls = 9'b111000000; // PERF
             default:  controls = 9'b000000000;
         endcase
     end
@@ -98,6 +82,7 @@ module aludec (
             2'b10: begin
                 case (funct)
                     FUNCT_ADD: alucontrol = 3'b010; // ADD
+                    FUNCT_MAC: alucontrol = 3'b101; // MAC
                     FUNCT_SUB: alucontrol = 3'b110; // SUB
                     FUNCT_AND: alucontrol = 3'b000; // AND
                     FUNCT_OR:  alucontrol = 3'b001; // OR

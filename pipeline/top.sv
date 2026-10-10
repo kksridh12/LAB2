@@ -11,6 +11,27 @@
 //  - This module connects the MIPS processor to instruction and data memory 
 //////////////////////////////////////////////////////////////////////////// 
 
+// Add Enums for opcode and funct fields to make debug easier
+typedef enum logic [5:0] {
+    OP_RTYPE = 6'b000000,
+    OP_LW    = 6'b100011,
+    OP_SW    = 6'b101011,
+    OP_BEQ   = 6'b000100,
+    OP_ADDI  = 6'b001000,
+    OP_J     = 6'b000010,
+    OP_PERF  = 6'b111111
+} opcode_t;
+
+typedef enum logic [5:0] {
+    FUNCT_ADD  = 6'b100000,
+    FUNCT_SUB  = 6'b100010,
+    FUNCT_AND  = 6'b100100,
+    FUNCT_OR   = 6'b100101,
+    FUNCT_SLT  = 6'b101010,
+    FUNCT_MAC  = 6'b100001,
+    FUNCT_PERF_CYC = 6'b000000,
+    FUNCT_PERF_INST = 6'b000001
+} funct_t;
 // ============================================================
 // Top-level processor and memory connections
 // ============================================================
@@ -60,8 +81,8 @@ module mips (
 
     // Decode the instruction held in the Decode stage.
     controller c (
-        .op(instrD[31:26]),
-        .funct(instrD[5:0]),
+        .op(opcode_t'(instrD[31:26])),
+        .funct(funct_t'(instrD[5:0])),
         .*
     );
 

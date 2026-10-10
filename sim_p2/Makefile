@@ -2,7 +2,7 @@ VCS ?= $(VCS_HOME)/bin/vcs
 VERDI ?= $(VERDI_HOME)/bin/verdi
 
 SV_SRCS := \
-	../pipeline/testbench.sv \
+	../pipeline/testbench_p2.sv \
 	../pipeline/top.sv \
 	../pipeline/controller.sv \
 	../pipeline/datapath.sv
@@ -11,7 +11,7 @@ all: compile_and_sim
 
 # Compile and immediately run simulation
 compile_and_sim:
-	cp ../pipeline/memfile.dat .
+	cp -f ../pipeline/memfile_muladd.dat memfile.dat
 	$(VCS) -R -full64 -sverilog $(SV_SRCS) \
 	-kdb -lca -debug_access+all |& tee compile_and_sim.log
 
@@ -26,8 +26,8 @@ compile_verdi:
 	-debug_access+all -kdb -lca |& tee compile_verdi.log
 
 # Run already-compiled simulation
-sim:
-	cp -f ../pipeline/memfile.dat .
+sim_muladd:
+	cp -f ../pipeline/memfile_muladd.dat memfile.dat 
 	./simv
 
 # Launch Verdi
