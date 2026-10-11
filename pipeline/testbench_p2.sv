@@ -115,7 +115,7 @@ module MIPS_Testbench;
         end
     end
 
-    always @(posedge dut.mips.dp.isPerfCycD) begin
+    always @(posedge dut.mips.dp.D_perfcyc) begin
         expected_cycle_count = cycle_count;
         @(posedge clk); // wait for instruction to execute
         @(posedge clk); // wait for instruction to execute
@@ -129,7 +129,7 @@ module MIPS_Testbench;
             $display("Expected Cycle Count: %0d, Actual Cycle Count: %0d", expected_cycle_count, dut.mips.dp.rf.rf[12]);
         check_perf_mon = check_perf_mon + 1;
     end
-    always @(posedge dut.mips.dp.isPerfInstD) begin
+    always @(posedge dut.mips.dp.D_perfinstr) begin
         @(posedge clk); // wait for instruction to execute
         @(posedge clk); // wait for instruction to execute
         @(posedge clk); // wait for instruction to execute

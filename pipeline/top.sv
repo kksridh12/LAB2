@@ -32,6 +32,7 @@ typedef enum logic [5:0] {
     FUNCT_PERF_CYC = 6'b000000,
     FUNCT_PERF_INST = 6'b000001
 } funct_t;
+
 // ============================================================
 // Top-level processor and memory connections
 // ============================================================
@@ -73,21 +74,21 @@ module mips (
     input  logic [31:0] readdata
 );
 
-    logic [31:0] instrD;
+    logic [31:0] D_instr;
 
-    logic memtoregD, memwriteD, branchD;
-    logic alusrcD, regdstD, regwriteD, jumpD;
-    logic [2:0] alucontrolD;
+    logic D_memtoreg, D_memwrite, D_branch;
+    logic D_alusrc, D_regdst, D_regwrite, D_jump;
+    logic [2:0] D_alucontrol;
 
     // Decode the instruction held in the Decode stage.
     controller c (
-        .op(opcode_t'(instrD[31:26])),
-        .funct(funct_t'(instrD[5:0])),
+        .op(opcode_t'(D_instr[31:26])),
+        .funct(funct_t'(D_instr[5:0])),
         .*
     );
 
     datapath dp ( .* );
-
+        
 endmodule
 
 

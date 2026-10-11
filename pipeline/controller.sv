@@ -1,56 +1,43 @@
 module controller (
-    input  opcode_t op,
-    input  funct_t  funct,
-    output logic       memtoregD,
-    output logic       memwriteD,
-    output logic       branchD,
-    output logic       alusrcD,
-    output logic       regdstD,
-    output logic       regwriteD,
-    output logic       jumpD,
-    output logic [2:0] alucontrolD
+    input  opcode_t    op,
+    input  funct_t     funct,
+    output logic       D_memtoreg,
+    output logic       D_memwrite,
+    output logic       D_branch,
+    output logic       D_alusrc,
+    output logic       D_regdst,
+    output logic       D_regwrite,
+    output logic       D_jump,
+    output logic [2:0] D_alucontrol
 );
 
-    logic [1:0] aluopD;
+    logic [1:0] D_aluop;
 
-    maindec md (
-        .op(op),
-        .memtoreg(memtoregD),
-        .memwrite(memwriteD),
-        .branch(branchD),
-        .alusrc(alusrcD),
-        .regdst(regdstD),
-        .regwrite(regwriteD),
-        .jump(jumpD),
-        .aluop(aluopD)
-    );
+    maindec md ( .* );
 
-    aludec ad (
-        .funct(funct),
-        .aluop(aluopD),
-        .alucontrol(alucontrolD)
-    );
+    aludec ad ( .* );
+
 
 endmodule
 
 
 module maindec (
     input  opcode_t op,
-    output logic   memtoreg,
-    output logic   memwrite,
-    output logic   branch,
-    output logic   alusrc,
-    output logic   regdst,
-    output logic   regwrite,
-    output logic   jump,
-    output logic [1:0] aluop
+    output logic   D_memtoreg,
+    output logic   D_memwrite,
+    output logic   D_branch,
+    output logic   D_alusrc,
+    output logic   D_regdst,
+    output logic   D_regwrite,
+    output logic   D_jump,
+    output logic [1:0] D_aluop
 );
 
     logic [8:0] controls;
 
     assign {
-        regwrite, regdst, alusrc, branch,
-        memwrite, memtoreg, jump, aluop
+        D_regwrite, D_regdst, D_alusrc, D_branch,
+        D_memwrite, D_memtoreg, D_jump, D_aluop
     } = controls;
 
     always_comb begin
@@ -71,26 +58,26 @@ endmodule
 
 module aludec (
     input  funct_t  funct,
-    input  logic [1:0] aluop,
-    output logic [2:0] alucontrol
+    input  logic [1:0] D_aluop,
+    output logic [2:0] D_alucontrol
 );
 
     always_comb begin
-        case (aluop)
-            2'b00: alucontrol = 3'b010; // LW, SW, ADDI: add
-            2'b01: alucontrol = 3'b110; // BEQ: subtract
+        case (D_aluop)
+            2'b00: D_alucontrol = 3'b010; // LW, SW, ADDI: add
+            2'b01: D_alucontrol = 3'b110; // BEQ: subtract
             2'b10: begin
                 case (funct)
-                    FUNCT_ADD: alucontrol = 3'b010; // ADD
-                    FUNCT_MAC: alucontrol = 3'b101; // MAC
-                    FUNCT_SUB: alucontrol = 3'b110; // SUB
-                    FUNCT_AND: alucontrol = 3'b000; // AND
-                    FUNCT_OR:  alucontrol = 3'b001; // OR
-                    FUNCT_SLT: alucontrol = 3'b111; // SLT
-                    default:   alucontrol = 3'b010;
+                    FUNCT_ADD: D_alucontrol = 3'b010; // ADD
+                    FUNCT_MAC: D_alucontrol = 3'b101; // MAC
+                    FUNCT_SUB: D_alucontrol = 3'b110; // SUB
+                    FUNCT_AND: D_alucontrol = 3'b000; // AND
+                    FUNCT_OR:  D_alucontrol = 3'b001; // OR
+                    FUNCT_SLT: D_alucontrol = 3'b111; // SLT
+                    default:   D_alucontrol = 3'b010;
                 endcase
             end
-            default: alucontrol = 3'b010;
+            default: D_alucontrol = 3'b010;
         endcase
     end
 

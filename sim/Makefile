@@ -28,7 +28,7 @@ compile_verdi:
 # Run already-compiled simulation
 sim:
 	cp -f ../pipeline/memfile.dat .
-	./simv
+	./simv |& tee sim.log
 
 # Launch Verdi
 verdi:
