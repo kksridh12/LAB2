@@ -2,11 +2,11 @@ Magic 271485
 Revision Verdi_W-2024.09-SP2-3
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 11 1512 322 253 65
+viewPort 0 11 1512 710 253 65
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/a34137_asu/Documents/LAB2/sim/novas.fsdb"
+openDirFile -d / "" "/home/a34137_asu/Documents/LAB2/sim_p2/novas.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -16,16 +16,16 @@ signalSpacing 5
 
 ; windowTimeUnit is used for zoom, cursor & marker
 ; waveform viewport range
-zoom 15192.954969 99214.599875
-cursor 65000.000000
+zoom 0.000000 308050.000000
+cursor 145000.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 5
+top 0
 ; marker line index
-markerPos 19
+markerPos 16
 
 ; event list
 ; addEvent event_name event_expression
@@ -46,38 +46,34 @@ curSTATUS ByChange
 
 
 addGroup "Clocks/Rsts"
-activeDirFile "" "/home/a34137_asu/Documents/LAB2/sim/novas.fsdb"
+activeDirFile "" "/home/a34137_asu/Documents/LAB2/sim_p2/novas.fsdb"
 addSignal -h 16 /MIPS_Testbench/dut/clk
 addSignal -h 16 -holdScope reset
+addGroup "Opcode"
+addSignal -h 16 -UNSIGNED /MIPS_Testbench/dut/mips/c/op[5:0]
+addSignal -h 16 -UNSIGNED /MIPS_Testbench/dut/mips/c/ad/funct[5:0]
 addGroup "Instructions"
 addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/pc[31:0]
 addSignal -h 16 -UNSIGNED -HEX -holdScope instr[31:0]
-addSignal -h 16 /MIPS_Testbench/dut/mips/dp/stallD
-addGroup "Controls" -e FALSE
-addSignal -h 16 /MIPS_Testbench/dut/mips/c/memtoregD
-addSignal -h 16 -holdScope memwriteD
-addSignal -h 16 -holdScope branchD
-addSignal -h 16 -holdScope alusrcD
-addSignal -h 16 -holdScope regdstD
-addSignal -h 16 -holdScope regwriteD
-addSignal -h 16 -holdScope jumpD
-addSignal -h 16 -UNSIGNED -HEX -holdScope alucontrolD[2:0]
-addGroup "G4"
-addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/instrD[31:0]
-addSignal -h 16 -UNSIGNED /MIPS_Testbench/dut/mips/c/op[5:0]
-addSignal -h 16 -UNSIGNED /MIPS_Testbench/dut/mips/c/ad/funct[5:0]
-addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/rsD[4:0]
-addSignal -h 16 -UNSIGNED -HEX -holdScope rtD[4:0]
-addSignal -h 16 -UNSIGNED -HEX -holdScope rdD[4:0]
-addSignal -h 16 -holdScope regdstD
-addSignal -h 16 -UNSIGNED -HEX -holdScope destE[4:0]
-addSignal -h 16 -UNSIGNED -HEX -holdScope destW[4:0]
-addGroup "G5"
-addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/forwardedAE[31:0]
-addSignal -h 16 -UNSIGNED -HEX -holdScope forwardedBE[31:0]
-addGroup "G6"
-addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/aluout[31:0]
-addSignal -h 16 -UNSIGNED -HEX -holdScope writedata[31:0]
+addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/D_instr[31:0]
+addSignal -h 16 -holdScope E_valid
+addSignal -h 16 -holdScope M_valid
+addSignal -h 16 -holdScope WB_valid
+addSignal -h 16 -holdScope E_mul
+addSignal -h 16 -holdScope E_mulSecondCycle
+addGroup "RegWriteBack"
+addSignal -h 16 /MIPS_Testbench/dut/mips/dp/WB_writeEnable
+addSignal -h 16 -UNSIGNED -HEX -holdScope WB_dest[4:0]
+addSignal -h 16 -UNSIGNED -HEX -holdScope WB_result[31:0]
+addGroup "MemWrite"
+addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dataadr[31:0]
+addSignal -h 16 -holdScope memwrite
+addSignal -h 16 -UNSIGNED -HEX /MIPS_Testbench/dut/mips/dp/writedata[31:0]
+addGroup "Stall"
+addSignal -h 16 /MIPS_Testbench/dut/mips/dp/D_stall
+addSignal -h 16 -holdScope E_stall
+addSignal -h 16 -holdScope M_stall
+addSignal -h 16 -holdScope WB_stall
 addGroup "G7"
 
 ; getSignalForm Scope Hierarchy Status

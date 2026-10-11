@@ -1,0 +1,14 @@
+addi    $1,  $0, 5
+addi    $2,  $0, 3
+addi    $8,  $0, 7
+add     $3,  $1, $2
+add     $4,  $3, $2
+muladd  $4,  $1, $2     # $4 = $1 * $2 + $4 = 26
+sw      $4,  0($0)
+muladd  $8,  $1, $2     # $8 = $1 * $2 + $8 = 22
+nop
+sw      $8,  4($0)
+perfmon $12, 1          # Inst  - 9
+perfmon $12, 0          # Cycle - 24
+nop
+nop

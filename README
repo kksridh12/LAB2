@@ -1,1 +1,15 @@
 LAB2 Instructions
+
+# Part 1 
+
+
+
+
+# Part 2
+
+Simulations 
+cd sim_p2
+
+make compile_verdi
+make sim_muladd
+make waves_verdi
