@@ -7,6 +7,12 @@ make compile_verdi
 make sim
 make waves_verdi
 
+The testbench will use pipeline/memfile.dat to verify instructions.
+Within testbench.sv, configure N = #, where N is how many instructions you want.
+Comment out or add:
+expected_data[#] = 
+expected_addr[#] = 
+with the corresponding instruction number and expected result.
 
 # Part 2
 
