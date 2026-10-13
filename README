@@ -2,7 +2,10 @@ LAB2 Instructions
 
 # Part 1 
 
-
+cd sim ;
+make compile_verdi 
+make sim
+make waves_verdi
 
 
 # Part 2
